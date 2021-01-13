@@ -21,12 +21,34 @@ class Poll(models.Model):
         default=""
     )
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        """Костылим примером из доков, чтобы запретить изменение старта"""
+        if len(values) != len(cls._meta.concrete_fields):
+            values = list(values)
+            values.reverse()
+            values = [
+                values.pop() if f.attname in field_names else DEFERRED
+                for f in cls._meta.concrete_fields
+            ]
+
+        instance = cls(*values)
+        instance._state.adding = False
+        instance._state.db = db
+
+        instance._loaded_values = dict(zip(field_names, values))
+        return instance
+
     def save(self, *args, **kwargs):
         """Перегружаем базовый метод, чтобы защитить start от изменения"""
         if not self._state.adding and (self.start != self._loaded_values["start"]):
             raise ValueError("Нельзя обновить значение start")
 
         super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        """Перегружаем преобразование в строку"""
+        return self.name
 
 
 
@@ -58,6 +80,10 @@ class Question(models.Model):
         on_delete=models.CASCADE
     )
 
+    def __str__(self) -> str:
+        """Перегружаем преобразование в строку"""
+        return self.text
+
 
 class Option(models.Model):
     """Вариант ответа в вопросе"""
@@ -70,6 +96,10 @@ class Option(models.Model):
         Question,
         on_delete=models.CASCADE
     )
+
+    def __str__(self) -> str:
+        """Перегружаем преобразование в строку"""
+        return self.text
 
 
 class Answer(models.Model):
