@@ -227,3 +227,62 @@ def answer(request: Request) -> Response:
                 answer.save()
 
     return Response(response)
+
+
+@api_view(["GET"])
+def answers(request: HttpRequest, user_id: int) -> Response:
+    """Возвращаем результаты опросов для пользователя по его id"""
+    answers = Answer.objects.filter(user=user_id)
+
+    if answers.count() == 0:
+        return Response([])
+
+    questions = Question.objects.filter(pk__in=[
+        answer.question.id for answer in answers
+    ])
+
+    polls = Poll.objects.filter(pk__in=[
+        question.poll.id for question in questions
+    ])
+
+    results = []
+
+    for poll in polls:
+        poll_data = {
+            "poll_id": poll.id,
+            "questions": []
+        }
+
+        for question in questions:
+            if question.poll != poll:
+                continue
+
+            answered = []
+
+            for answer in answers:
+                if answer.question != question:
+                    continue
+
+                if answer.text is None:
+                    answered.append({
+                        "option_id": answer.option.id
+                    })
+                else:
+                    answered.append({
+                        "text": answer.text
+                    })
+
+            if answered:
+                if question.answer_type < 2:
+                    poll_data["questions"].append({
+                        "question_id": question.id,
+                        "answer": answered[0]
+                    })
+
+                else:
+                    poll_data["questions"].append({
+                        "question_id": question.id,
+                        "answers": answered
+                    })
+
+    return Response(poll_data)
