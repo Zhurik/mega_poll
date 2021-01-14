@@ -13,8 +13,8 @@ def active(request: HttpRequest) -> Response:
     """Получаем список активных опросов"""
     now = timezone.now()
     active_polls = Poll.objects.filter(start__lte=now, end__gte=now)
-    serializer = PollSerializer(active_polls, many=True)
-    return Response(serializer.data)
+    active_polls_ids = [poll.id for poll in active_polls]
+    return Response(active_polls_ids)
 
 
 @api_view(["GET"])
@@ -33,7 +33,8 @@ def poll(request: HttpRequest, poll_id: int) -> Response:
         return Response("Poll is inactive", status=400)
 
     questions = Question.objects.filter(poll=poll_id)
-    serializer = QuestionSerializer(questions, many=True)
+    question_ids = [question.id for question in questions]
+    serializer = PollSerializer(poll)
     return Response(serializer.data)
 
 
@@ -245,7 +246,10 @@ def answers(request: HttpRequest, user_id: int) -> Response:
         question.poll.id for question in questions
     ])
 
-    results = []
+    results = {
+        "user_id": user_id,
+        "done": []
+    }
 
     for poll in polls:
         poll_data = {
@@ -285,4 +289,7 @@ def answers(request: HttpRequest, user_id: int) -> Response:
                         "answers": answered
                     })
 
-    return Response(poll_data)
+        if len(poll_data["questions"]) > 0:
+            results["done"].append(poll_data)
+
+    return Response(results)

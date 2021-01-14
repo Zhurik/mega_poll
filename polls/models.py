@@ -51,7 +51,6 @@ class Poll(models.Model):
         return self.name
 
 
-
 TEXT = 0
 SINGLE = 1
 MULTIPLE = 2
